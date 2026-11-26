@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "museknock",
+  "keep_vars": true,
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-19",
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "INBOX", "class_name": "Inbox" }]
+  },
+  "exports": { "Inbox": { "type": "durable-object", "storage": "sqlite" } }
+}

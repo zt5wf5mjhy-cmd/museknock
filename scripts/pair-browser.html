@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pair MuseKnock</title>
+<style>
+  :root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+  body { margin: 0; background: Canvas; color: CanvasText; }
+  main { max-width: 37rem; margin: 4rem auto; padding: 0 1.25rem; }
+  h1 { font-size: clamp(1.9rem, 6vw, 2.6rem); line-height: 1.1; margin: 0 0 1rem; }
+  form { margin-top: 1.75rem; }
+  label { display: block; font-weight: 600; margin-top: 1rem; }
+  input:not([type=checkbox]) {
+    box-sizing: border-box; display: block; width: 100%; margin-top: .35rem;
+    padding: .65rem .75rem; border: 1px solid GrayText; border-radius: .35rem;
+    background: Field; color: FieldText; font: inherit;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }
+  button { border: 1px solid; border-radius: .35rem; padding: .55rem .85rem; font: inherit; cursor: pointer; }
+  button[type=submit]:enabled { background: #235944; color: white; border-color: transparent; }
+  ol { padding-left: 1.4rem; overflow-wrap: anywhere; }
+  li + li { margin-top: .5rem; }
+</style>
+<main>
+  <h1>Pair MuseKnock</h1>
+  <p>Enter your deployed Worker details. Keep this page open and have your iPhone nearby.</p>
+  <form method="post" autocomplete="off">
+    <label>Worker URL
+      <input name="worker" type="url" placeholder="https://museknock.example.workers.dev" required>
+    </label>
+    <label>Worker admin token
+      <input name="admin" type="password" autocomplete="off" required>
+    </label>
+    <label>Muse Gadget SDK token
+      <input name="sdkToken" type="password" autocomplete="off" required>
+    </label>
+    <label><input name="replace" type="checkbox" REPLACE_CHECKED> Replace existing pairing</label>
+    <div class="actions">
+      <button type="submit">Start pairing</button>
+      <button type="button" disabled>Cancel</button>
+    </div>
+  </form>
+  <p role="status"></p>
+  <ol aria-live="polite"></ol>
+</main>
+<script nonce="SCRIPT_NONCE">
+  const form = document.querySelector('form')
+  const start = form.querySelector('[type=submit]')
+  const cancel = form.querySelector('[type=button]')
+  const log = document.querySelector('ol')
+  const status = document.querySelector('[role=status]')
+  let pairing
+  cancel.onclick = () => pairing.abort()
+  form.onsubmit = async event => {
+    event.preventDefault()
+    if (pairing) return
+    const data = new FormData(form)
+    pairing = new AbortController()
+    start.disabled = true
+    cancel.disabled = false
+    log.replaceChildren()
+    status.textContent = 'Pairing in progress'
+    let done = false
+    try {
+      const response = await fetch(location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          worker: data.get('worker'), admin: data.get('admin'),
+          sdkToken: data.get('sdkToken'), replace: data.has('replace'),
+        }),
+        signal: pairing.signal,
+      })
+      if (!response.ok) throw new Error(response.status === 400
+        ? 'Check the Worker URL and both tokens.' : 'Could not start pairing. Open the launcher again if needed.')
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let pending = ''
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        pending += decoder.decode(chunk.value, { stream: true })
+        const lines = pending.split('\n')
+        pending = lines.pop()
+        for (const line of lines) {
+          const update = JSON.parse(line)
+          if (update.error) throw new Error(update.error)
+          if (update.done) done = true
+          if (update.message) {
+            const item = document.createElement('li')
+            item.textContent = update.message
+            log.append(item)
+          }
+        }
+      }
+      if (!done) throw new Error('The pairing connection ended. Check the Worker status before retrying.')
+      form.reset()
+      status.textContent = 'Pairing complete. You can close this page.'
+    } catch (error) {
+      status.textContent = pairing.signal.aborted ? 'Pairing cancelled.' : error.message
+    } finally {
+      pairing = undefined
+      start.disabled = done
+      cancel.disabled = true
+    }
+  }
+</script>
+</html>

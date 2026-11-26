@@ -1,0 +1,49 @@
+{
+  "name": "museknock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "check": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "test": "tsx --test tests/*.test.*",
+    "deploy:local": "wrangler deploy --minify --secrets-file .dev.vars",
+    "pair": "tsx scripts/pair.ts"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.17.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "blakejs": "^1.2.1",
+    "hono": "4.13.21",
+    "saxes": "6.0.0",
+    "tweetnacl-sealed-box": "^1.0.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261123.1",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "miniflare": "5.20261119.0-beta",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "wrangler": "4.166.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "MCP_ADMIN_TOKEN": {
+        "description": "Generate a separate random token for your admin Muse connector. Save it for the Bearer token field in Muse."
+      },
+      "CREDENTIAL_ENCRYPTION_KEY": {
+        "description": "Generate a separate 32-byte random key (64 hexadecimal characters). Back it up in your password manager and reuse it on every deployment of this Worker."
+      },
+      "MUSE_SDK_TOKEN": {
+        "description": "Your Muse Gadget SDK token from gadgets.muse.ai. The browser setup uses this Worker secret when minting device credentials."
+      }
+    }
+  }
+}
